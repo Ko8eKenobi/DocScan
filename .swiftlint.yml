@@ -1,0 +1,132 @@
+# ----------------------------
+# SwiftLint config (iOS, Swift 5.9+)
+# ----------------------------
+
+# Какие папки включать/исключать
+included:                # каталоги, где проверяем стиль
+  - CoinGecko
+excluded:                # каталоги, которые пропускаем
+  - SourcePackages/checkouts/Kingfisher
+  - Pods
+  - Carthage
+  - DerivedData
+  - fastlane
+  - Scripts
+  - Resources
+  - Generated
+
+# ----------------------------
+# Отключённые правила (слишком строгие/мешают в начале)
+# ----------------------------
+disabled_rules:
+  - trailing_whitespace         # лишние пробелы поправит форматтер
+  - large_tuple                 # большие кортежи допускаем, лучше заменить на struct
+  - cyclomatic_complexity       # сложность кода лучше анализировать SonarQube
+  - file_length                 # не будем ограничивать размер файла пока проект растёт
+  - sorted_imports        # делает swift-format (OrderedImports)
+  - trailing_comma        # делает swift-format (UseTrailingCommas)
+  - trailing_whitespace
+# ----------------------------
+# Опциональные правила (включаем для прод-качества кода)
+# ----------------------------
+opt_in_rules:
+  - implicitly_unwrapped_optional       # запрещает IUO (например var a: String!)
+  - force_unwrapping                    # запрещает ! (кроме тестов/специальных случаев)
+#  - explicit_acl                        # требует явно указывать уровень доступа
+  - lower_acl_than_parent               # ACL дочернего ≤ ACL родителя
+  - private_action                      # IBAction должен быть private
+  - private_outlet                      # IBOutlet должен быть private
+  - type_body_length                    # ограничение на размер тела типа
+  - function_body_length                # ограничение на размер функции
+  - file_header                         # требует заголовок в начале файла (автор, дата)
+  - todo                                # подсвечивает TODO/FIXME
+  - attributes                          # атрибуты (например @objc) должны быть на отдельной строке
+  - closure_end_indentation             # правильный отступ после закрытия замыкания
+  - closure_spacing                     # пробелы внутри замыкания { x in ... }
+  - collection_alignment                # выравнивание элементов массива/словаря
+  - conditional_returns_on_newline       # return в guard/if всегда на новой строке
+  - contains_over_filter_is_empty        # использовать .contains вместо filter{...}.isEmpty
+  - empty_count                         # использовать .isEmpty вместо .count == 0
+  - explicit_init                       # явный вызов init() вместо сокращённого ()
+  - fatal_error_message                 # fatalError должен содержать сообщение
+  - first_where                         # использовать first(where:) вместо filter.first
+  - implicit_return                     # если тело функции 1 строка — return можно опустить
+  - legacy_hashing                      # запрет устаревших hashValue
+  - legacy_random                       # запрет arc4random, использовать Random API
+  - literal_expression_end_indentation  # выравнивание литералов (массивы, словари)
+  - modifier_order                      # порядок модификаторов (например public final class)
+  - multiline_arguments                 # аргументы функций в столбик
+  - multiline_function_chains           # цепочки вызовов в столбик
+  - operator_usage_whitespace           # пробелы вокруг операторов
+  - overridden_super_call               # вызов super у переопределённых методов
+  - redundant_nil_coalescing            # ?? nil не нужен
+  - sorted_imports                      # сортировать импорты
+  - switch_case_alignment               # выравнивание case в switch
+  - trailing_closure                    # замыкания последним параметром без скобок
+  - unneeded_parentheses_in_closure_argument # убрать лишние скобки { (x) in ... }
+  - vertical_parameter_alignment_on_call # параметры вызова в столбик
+  - vertical_whitespace                 # нет лишних пустых строк
+  - vertical_whitespace_closing_braces  # пустые строки перед } запрещены
+  - vertical_whitespace_between_cases   # пустые строки между case в switch
+  - yoda_condition                      # запрещает "if 42 == x", надо "if x == 42"
+  - comment_spacing
+  - discarded_notification_center_observer
+  
+# ----------------------------
+# Настройки порогов
+# ----------------------------
+line_length:             # ограничение на длину строки
+  warning: 130           # предупреждение
+  error: 160             # ошибка
+  ignores_comments: true
+  ignores_urls: true
+
+type_name:               # имена классов/структур
+  max_length:
+    warning: 40
+    error: 50
+
+identifier_name:         # имена переменных/функций
+  min_length:
+    warning: 2
+  allowed_symbols: ["_"]                 # разрешённый символ
+  excluded: ["x", "y", "i", "id", "URL", "JSON", "OK", "to", "on"]
+
+function_parameter_count:
+  warning: 6
+  error: 8
+  
+# Лишние пустые строки
+vertical_whitespace:
+  max_empty_lines: 1
+  
+# Комментарии / закомментированный код
+comment_spacing:
+  severity: warning
+discarded_notification_center_observer:
+  severity: warning
+
+# Обязательные private для IB
+private_action:
+  severity: warning
+private_outlet:
+  severity: warning
+
+# Опасные восклицательные знаки
+force_unwrapping:
+  severity: warning
+implicitly_unwrapped_optional:
+  severity: warning
+
+# Импорты по алфавиту
+sorted_imports:
+  severity: warning
+
+# ----------------------------
+# Стиль
+# ----------------------------
+trailing_comma:
+  mandatory_comma: true  # запятая в конце многострочного массива/словаря обязательна
+
+
+

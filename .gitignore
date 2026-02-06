@@ -1,0 +1,28 @@
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+Secrets.xcconfig
+
+# SwiftPM
+/.build/
+/Packages/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/
+
+# Fastlane
+fastlane/report.xml
+fastlane/screenshots
+fastlane/test_output
+
+# User-specific
+*.personal.xcconfig
+xcuserdata/
+
+# Other
+.DS_Store
