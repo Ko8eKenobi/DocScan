@@ -4,7 +4,8 @@ build/
 *.xcuserstate
 *.xcworkspace/xcuserdata/
 Secrets.xcconfig
-
+*.xccheckout
+*.xcscmblueprint
 # SwiftPM
 /.build/
 /Packages/
@@ -19,6 +20,8 @@ Carthage/
 fastlane/report.xml
 fastlane/screenshots
 fastlane/test_output
+fastlane/Preview.html
+fastlane/test_output
 
 # User-specific
 *.personal.xcconfig
@@ -26,3 +29,12 @@ xcuserdata/
 
 # Other
 .DS_Store
+
+# Logs
+*.log
+
+# Secrets
+*.env
+*.p12
+*.mobileprovision
+*.cer
