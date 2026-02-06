@@ -1,0 +1,86 @@
+import CoreData
+
+protocol IDocumentsRepository {
+    func fetch(page: Int, pageSize: Int) async throws -> [Document]
+    func count() async throws -> Int
+
+    func createMock() async throws -> Document
+    func delete(id: UUID) async throws
+    func deleteAll() async throws
+}
+
+final class DocumentsRepository: IDocumentsRepository {
+    private let persistance: PersistenceController
+    
+    init(persistance: PersistenceController) {
+        self.persistance = persistance
+    }
+    
+    func fetch(page: Int, pageSize: Int) async throws -> [Document] {
+        let context = persistance.container.viewContext
+        return try await context.perform {
+            let req = CDDocument.fetchRequest()
+            req.sortDescriptors = [
+                NSSortDescriptor(keyPath: \CDDocument.createdAt, ascending: false)
+            ]
+            let items = try context.fetch(req)
+            return items.compactMap{ $0.toDomain() }
+        }
+        
+    }
+    
+    func count() async throws -> Int {
+        let context = persistance.container.viewContext
+        return try await context.perform {
+            let req = CDDocument.fetchRequest()
+            return try context.count(for: req)
+        }
+    }
+    
+    func createMock() async throws -> Document {
+        let context = persistance.container.viewContext
+        return try await context.perform {
+            let doc = Document(
+                id: UUID(),
+                title: "Scan \(Date.now.description)",
+                createdAt: .now,
+                status: .draft,
+                pdfPath: "",
+                previewPath: ""
+            )
+            let cd = CDDocument(context: context)
+            cd.create(from: doc)
+            try context.save()
+            return doc
+        }
+    }
+    
+    func delete(id: UUID) async throws {
+        let context = persistance.container.viewContext
+        return try await context.perform {
+            let req: NSFetchRequest<CDDocument> = CDDocument.fetchRequest()
+            req.predicate = NSPredicate(format: "id == %@", id.uuidString)
+            if let doc = try context.fetch(req).first {
+                context.delete(doc)
+                try context.save()
+            }
+        }
+    }
+    
+    func deleteAll() async throws {
+        let context = persistance.container.viewContext
+        try await context.perform {
+            let req = NSFetchRequest<NSFetchRequestResult>(entityName: "CDDocument")
+            let batch = NSBatchDeleteRequest(fetchRequest: req)
+            
+            batch.resultType = .resultTypeObjectIDs
+            
+            let res = try context.execute(batch) as? NSBatchDeleteResult
+            let ids = res?.result as? [NSManagedObjectID] ?? []
+            
+            NSManagedObjectContext.mergeChanges(fromRemoteContextSave: [NSDeletedObjectsKey: ids], into: [context])
+        }
+    }
+    
+    
+}

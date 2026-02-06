@@ -1,10 +1,3 @@
-//
-//  Persistence.swift
-//  DocScan
-//
-//  Created by Denis Shishmarev on 06.02.2026.
-//
-
 import CoreData
 
 struct PersistenceController {
@@ -14,9 +7,14 @@ struct PersistenceController {
     static let preview: PersistenceController = {
         let result = PersistenceController(inMemory: true)
         let viewContext = result.container.viewContext
-        for _ in 0..<10 {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
+        for i in 0..<10 {
+            let newItem = CDDocument(context: viewContext)
+            newItem.id = UUID()
+            newItem.title = "Title \(Date.now.description)"
+            newItem.createdAt = Date().addingTimeInterval(TimeInterval(-i * 3600))
+            newItem.statusRaw = "draft"
+            newItem.pdfPath = nil
+            newItem.previewPath = nil
         }
         do {
             try viewContext.save()

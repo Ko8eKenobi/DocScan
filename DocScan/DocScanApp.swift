@@ -1,10 +1,3 @@
-//
-//  DocScanApp.swift
-//  DocScan
-//
-//  Created by Denis Shishmarev on 06.02.2026.
-//
-
 import SwiftUI
 
 @main
