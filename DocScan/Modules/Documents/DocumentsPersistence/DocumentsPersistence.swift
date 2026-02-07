@@ -10,7 +10,7 @@ struct PersistenceController {
         for i in 0..<10 {
             let newItem = CDDocument(context: viewContext)
             newItem.id = UUID()
-            newItem.title = "Title \(Date.now.description)"
+            newItem.title = "Title \(i)"
             newItem.createdAt = Date().addingTimeInterval(TimeInterval(-i * 3600))
             newItem.statusRaw = "draft"
             newItem.pdfPath = nil

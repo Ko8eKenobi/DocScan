@@ -10,19 +10,22 @@ protocol IDocumentsRepository {
 }
 
 final class DocumentsRepository: IDocumentsRepository {
-    private let persistance: PersistenceController
+    private let persistence: PersistenceController
     
-    init(persistance: PersistenceController) {
-        self.persistance = persistance
+    init(persistence: PersistenceController) {
+        self.persistence = persistence
     }
     
     func fetch(page: Int, pageSize: Int) async throws -> [Document] {
-        let context = persistance.container.viewContext
+        // TODO: Consider to use background context
+        let context = persistence.container.viewContext
         return try await context.perform {
             let req = CDDocument.fetchRequest()
             req.sortDescriptors = [
                 NSSortDescriptor(keyPath: \CDDocument.createdAt, ascending: false)
             ]
+            req.fetchLimit = pageSize
+            req.fetchOffset = pageSize * page
             let items = try context.fetch(req)
             return items.compactMap{ $0.toDomain() }
         }
@@ -30,7 +33,7 @@ final class DocumentsRepository: IDocumentsRepository {
     }
     
     func count() async throws -> Int {
-        let context = persistance.container.viewContext
+        let context = persistence.container.viewContext
         return try await context.perform {
             let req = CDDocument.fetchRequest()
             return try context.count(for: req)
@@ -38,11 +41,11 @@ final class DocumentsRepository: IDocumentsRepository {
     }
     
     func createMock() async throws -> Document {
-        let context = persistance.container.viewContext
+        let context = persistence.container.viewContext
         return try await context.perform {
             let doc = Document(
                 id: UUID(),
-                title: "Scan \(Date.now.description)",
+                title: "Some Title \((1...20).randomElement() ?? 0)",
                 createdAt: .now,
                 status: .draft,
                 pdfPath: "",
@@ -56,7 +59,7 @@ final class DocumentsRepository: IDocumentsRepository {
     }
     
     func delete(id: UUID) async throws {
-        let context = persistance.container.viewContext
+        let context = persistence.container.viewContext
         return try await context.perform {
             let req: NSFetchRequest<CDDocument> = CDDocument.fetchRequest()
             req.predicate = NSPredicate(format: "id == %@", id.uuidString)
@@ -68,7 +71,7 @@ final class DocumentsRepository: IDocumentsRepository {
     }
     
     func deleteAll() async throws {
-        let context = persistance.container.viewContext
+        let context = persistence.container.viewContext
         try await context.perform {
             let req = NSFetchRequest<NSFetchRequestResult>(entityName: "CDDocument")
             let batch = NSBatchDeleteRequest(fetchRequest: req)
