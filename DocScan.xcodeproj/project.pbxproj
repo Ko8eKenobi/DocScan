@@ -111,6 +111,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 92CD30E92F35E21D00EF64A6 /* Build configuration list for PBXNativeTarget "DocScan" */;
 			buildPhases = (
+				929BDC342F38ABD200047186 /* SwiftFormatter */,
 				92CD30BF2F35E21B00EF64A6 /* Sources */,
 				92CD30C02F35E21B00EF64A6 /* Frameworks */,
 				92CD30C12F35E21B00EF64A6 /* Resources */,
@@ -118,6 +119,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				929BDC332F38AA5D00047186 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				92CD30C52F35E21B00EF64A6 /* DocScan */,
@@ -209,6 +211,10 @@
 			);
 			mainGroup = 92CD30BA2F35E21B00EF64A6;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				929BDC2E2F389BD100047186 /* XCRemoteSwiftPackageReference "SwiftLint" */,
+				929BDC2F2F38A33200047186 /* XCRemoteSwiftPackageReference "SwiftFormat" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 92CD30C42F35E21B00EF64A6 /* Products */;
 			projectDirPath = "";
@@ -245,6 +251,28 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		929BDC342F38ABD200047186 /* SwiftFormatter */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = SwiftFormatter;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ -f \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/SwiftFormat/CommandLineTool/swiftformat\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/SwiftFormat/CommandLineTool/swiftformat\" .\nelse\n  echo \"warning: SwiftFormat not installed via SPM\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		92CD30BF2F35E21B00EF64A6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -270,6 +298,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		929BDC332F38AA5D00047186 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 929BDC322F38AA5D00047186 /* SwiftLintBuildToolPlugin */;
+		};
 		92CD30D72F35E21D00EF64A6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 92CD30C22F35E21B00EF64A6 /* DocScan */;
@@ -321,7 +353,7 @@
 				DEVELOPMENT_TEAM = 9B8XD4TU34;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -385,7 +417,7 @@
 				DEVELOPMENT_TEAM = 9B8XD4TU34;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -574,6 +606,33 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		929BDC2E2F389BD100047186 /* XCRemoteSwiftPackageReference "SwiftLint" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/realm/SwiftLint";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.63.2;
+			};
+		};
+		929BDC2F2F38A33200047186 /* XCRemoteSwiftPackageReference "SwiftFormat" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nicklockwood/SwiftFormat";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.59.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		929BDC322F38AA5D00047186 /* SwiftLintBuildToolPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 929BDC2E2F389BD100047186 /* XCRemoteSwiftPackageReference "SwiftLint" */;
+			productName = "plugin:SwiftLintBuildToolPlugin";
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 92CD30BB2F35E21B00EF64A6 /* Project object */;
 }

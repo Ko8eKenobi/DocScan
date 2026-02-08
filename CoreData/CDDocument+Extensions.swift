@@ -1,12 +1,12 @@
-import Foundation
 import CoreData
+import Foundation
 
 extension CDDocument {
     var status: DocumentStatus {
         get { DocumentStatus(rawValue: statusRaw ?? DocumentStatus.draft.rawValue) ?? .draft }
         set { statusRaw = newValue.rawValue }
     }
-    
+
     func toDomain() -> Document? {
         Document(
             id: id ?? UUID(),
@@ -17,8 +17,8 @@ extension CDDocument {
             previewPath: previewPath ?? ""
         )
     }
-    
-    func create(from doc: Document){
+
+    func create(from doc: Document) {
         id = doc.id
         title = doc.title
         createdAt = doc.createdAt

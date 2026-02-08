@@ -3,9 +3,12 @@
 # ----------------------------
 
 # Какие папки включать/исключать
-included:                # каталоги, где проверяем стиль
-  - CoinGecko
-excluded:                # каталоги, которые пропускаем
+included:
+  - DocScan
+  - Modules
+  
+ # каталоги, которые пропускаем
+excluded:
   - SourcePackages/checkouts/Kingfisher
   - Pods
   - Carthage
@@ -23,9 +26,6 @@ disabled_rules:
   - large_tuple                 # большие кортежи допускаем, лучше заменить на struct
   - cyclomatic_complexity       # сложность кода лучше анализировать SonarQube
   - file_length                 # не будем ограничивать размер файла пока проект растёт
-  - sorted_imports        # делает swift-format (OrderedImports)
-  - trailing_comma        # делает swift-format (UseTrailingCommas)
-  - trailing_whitespace
 # ----------------------------
 # Опциональные правила (включаем для прод-качества кода)
 # ----------------------------

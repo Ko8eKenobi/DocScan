@@ -2,19 +2,19 @@ import SwiftUI
 
 struct DocumentsView: View {
     @ObservedObject var vm: DocumentsViewModel
-    
+
     var body: some View {
         NavigationStack {
             Group {
                 if vm.documents.isEmpty {
-                    VStack{
+                    VStack {
                         Text("No documents found.")
                             .font(.headline)
                         Image(systemName: "document.badge.plus")
                             .resizable()
                             .frame(width: 100, height: 100)
                     }
-                    
+
                 } else {
                     List {
                         ForEach(vm.documents) { doc in
@@ -35,10 +35,10 @@ struct DocumentsView: View {
                     Button("Delete All") { deleteAllDocuments() }
                 }
                 ToolbarItem {
-                    Button{ addDocument() }
-                    label: {
-                        Image(systemName: "plus")
-                    }
+                    Button { addDocument() }
+                        label: {
+                            Image(systemName: "plus")
+                        }
                 }
             }
             .refreshable { refreshDocuments() }
@@ -57,23 +57,25 @@ struct DocumentsView: View {
             await vm.deleteDocument(at: offsets)
         }
     }
-    
+
     private func refreshDocuments() {
         Task { await vm.refreshDocuments() }
     }
-    
+
     private func loadDocuments() {
         Task { await vm.onAppear() }
     }
+
     private func deleteAllDocuments() {
         Task {
             await vm.deleteAll()
         }
     }
 }
+
 private struct DocumentRow: View {
     let doc: Document
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -87,14 +89,13 @@ private struct DocumentRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            
+
             Text(doc.status.rawValue)
                 .font(.title2)
                 .foregroundStyle(.secondary)
         }
-        
     }
-    
+
     // TODO: Check after statuses implementation
     private var icon: String {
         switch doc.status {
@@ -124,4 +125,3 @@ private struct PreviewHost: View {
             .environment(\.managedObjectContext, persistence.container.viewContext)
     }
 }
-

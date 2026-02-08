@@ -15,4 +15,3 @@ public enum DocumentStatus: String {
     case ready
     case failed
 }
-

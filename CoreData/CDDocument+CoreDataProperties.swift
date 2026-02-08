@@ -6,25 +6,20 @@
 //
 //
 
-import Foundation
 import CoreData
+import Foundation
 
-
-extension CDDocument {
-
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<CDDocument> {
-        return NSFetchRequest<CDDocument>(entityName: "CDDocument")
+public extension CDDocument {
+    @nonobjc class func fetchRequest() -> NSFetchRequest<CDDocument> {
+        NSFetchRequest<CDDocument>(entityName: "CDDocument")
     }
 
-    @NSManaged public var createdAt: Date?
-    @NSManaged public var id: UUID?
-    @NSManaged public var pdfPath: String?
-    @NSManaged public var previewPath: String?
-    @NSManaged public var statusRaw: String?
-    @NSManaged public var title: String?
-
+    @NSManaged var createdAt: Date?
+    @NSManaged var id: UUID?
+    @NSManaged var pdfPath: String?
+    @NSManaged var previewPath: String?
+    @NSManaged var statusRaw: String?
+    @NSManaged var title: String?
 }
 
-extension CDDocument : Identifiable {
-
-}
+extension CDDocument: Identifiable {}
