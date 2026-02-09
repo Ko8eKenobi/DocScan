@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 @MainActor
 final class DocumentsViewModel: ObservableObject {
@@ -27,18 +28,16 @@ final class DocumentsViewModel: ObservableObject {
         }
     }
 
+    // TODO: Improve default document title generation
+    private func makeTitle() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "Scan yyyy-MM-dd HH:mm:ss"
+        return f.string(from: .now)
+    }
+
     func onAppear() async {
         if documents.isEmpty {
             await load()
-        }
-    }
-
-    func addMockDocument() async {
-        do {
-            _ = try await repository.createMock()
-            await load()
-        } catch {
-            alert = AppAlert(title: "Failed to add Mock Document", message: error.localizedDescription)
         }
     }
 
@@ -81,6 +80,18 @@ final class DocumentsViewModel: ObservableObject {
         } catch {
             // TODO: No alert, just log + soft retry
             alert = AppAlert(title: "Failed to load more documents", message: error.localizedDescription)
+        }
+    }
+
+    func createDocument(from image: UIImage) async -> UUID? {
+        do {
+            let title = makeTitle()
+            let id = try await repository.createWithFirstPage(title: title, image: image)
+            await load()
+            return id
+        } catch {
+            alert = AppAlert(title: "Failed create document", message: error.localizedDescription)
+            return nil
         }
     }
 }

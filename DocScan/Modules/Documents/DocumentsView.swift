@@ -2,10 +2,13 @@ import SwiftUI
 
 struct DocumentsView: View {
     @ObservedObject var vm: DocumentsViewModel
+    @State private var showCamera = false
+    @State private var capturedImage: UIImage?
+
     let onOpenDetails: (UUID) -> Void
 
     var body: some View {
-        Group {
+        VStack {
             if vm.documents.isEmpty {
                 VStack {
                     Text("No documents found.")
@@ -39,28 +42,29 @@ struct DocumentsView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Delete All") { deleteAllDocuments() }
             }
-            ToolbarItem {
-                Button { addDocument() }
-                    label: {
-                        Image(systemName: "plus")
-                    }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showCamera = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
         }
         .refreshable { refreshDocuments() }
         .onAppear { loadDocuments() }
         .alert(item: $vm.alert) { $0.toAlert() }
-    }
-
-    private func addDocument() {
-        Task {
-            await vm.addMockDocument()
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker(image: $capturedImage)
+                .ignoresSafeArea()
+        }
+        .onChange(of: capturedImage) { image in
+            guard let image else { return }
+            createDocument(image)
         }
     }
 
     private func deleteDocument(at offsets: IndexSet) {
-        Task {
-            await vm.deleteDocument(at: offsets)
-        }
+        Task { await vm.deleteDocument(at: offsets) }
     }
 
     private func refreshDocuments() {
@@ -72,8 +76,15 @@ struct DocumentsView: View {
     }
 
     private func deleteAllDocuments() {
+        Task { await vm.deleteAll() }
+    }
+
+    private func createDocument(_ image: UIImage) {
         Task {
-            await vm.deleteAll()
+            if let id = await vm.createDocument(from: image) {
+                onOpenDetails(id)
+            }
+            capturedImage = nil
         }
     }
 }
@@ -129,10 +140,8 @@ private struct PreviewHost: View {
         }
         .environment(\.managedObjectContext, persistence.container.viewContext)
         .task {
-            // гарантируем загрузку данных для preview-store
             await vm.onAppear()
 
-            // открываем details первого документа (если есть)
             if let first = vm.documents.first {
                 router.push(.documentDetails(id: first.id))
             }

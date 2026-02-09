@@ -1,12 +1,14 @@
 import CoreData
+import UIKit
 
 protocol IDocumentsRepository {
     func fetch(page: Int, pageSize: Int) async throws -> [Document]
     func fetch(by id: UUID) async throws -> Document?
+
     func count() async throws -> Int
 
-    // TODO: Remove createMock after real files handlers implementation
-    func createMock() async throws -> Document
+    // func create(title: String) async throws -> Document
+
     func delete(id: UUID) async throws
     func deleteAll() async throws
 }
@@ -51,23 +53,23 @@ final class DocumentsRepository: IDocumentsRepository {
         }
     }
 
-    func createMock() async throws -> Document {
-        let context = persistence.container.viewContext
-        return try await context.perform {
-            let doc = Document(
-                id: UUID(),
-                title: "Some Title \((1 ... 20).randomElement() ?? 0)",
-                createdAt: .now,
-                status: .draft,
-                pdfPath: "",
-                previewPath: ""
-            )
-            let cd = CDDocument(context: context)
-            cd.create(from: doc)
-            try context.save()
-            return doc
-        }
-    }
+//    private func create(title: String) async throws -> Document {
+//        let context = persistence.container.viewContext
+//        return try await context.perform {
+//            let doc = Document(
+//                id: UUID(),
+//                title: title,
+//                createdAt: .now,
+//                status: .draft,
+//                pdfPath: "",
+//                previewPath: ""
+//            )
+//            let cd = CDDocument(context: context)
+//            cd.create(from: doc)
+//            try context.save()
+//            return doc
+//        }
+//    }
 
     func delete(id: UUID) async throws {
         let context = persistence.container.viewContext
@@ -94,5 +96,68 @@ final class DocumentsRepository: IDocumentsRepository {
 
             NSManagedObjectContext.mergeChanges(fromRemoteContextSave: [NSDeletedObjectsKey: ids], into: [context])
         }
+    }
+
+    // TODO: Refactor with StorageHandler
+    func createWithFirstPage(title: String, image: UIImage) async throws -> UUID? {
+        let context = persistence.container.viewContext
+        var result: UUID?
+
+        try await context.perform {
+            let doc = Document(
+                id: UUID(),
+                title: title,
+                createdAt: .now,
+                status: .draft,
+                pdfPath: "",
+                previewPath: ""
+            )
+            // TODO: Clean up debug comments after stabilizing file paths
+            // Create directory
+            let cdDoc = CDDocument(context: context)
+            cdDoc.create(from: doc)
+
+            // TODO: Switch to relative paths in CoreData (avoid storing sandbox absolute paths)
+            guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+            let url = dir.appendingPathComponent("documents", isDirectory: true)
+                .appendingPathComponent(doc.id.uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+
+            // Save images
+            let pageId = UUID()
+            let imageURL = url.appendingPathComponent("\(pageId.uuidString).jpg")
+            let thumbURL = url.appendingPathComponent("\(pageId.uuidString)-thumb.jpg")
+
+            let imageData = image.jpegData(compressionQuality: 1)
+            try imageData?.write(to: imageURL)
+
+            let size = image.size
+            let scale = 240.0 / max(size.width, size.height)
+            let target = CGSize(width: size.width * scale, height: size.height * scale)
+
+            let render = UIGraphicsImageRenderer(size: target)
+            let thumb = render.image { _ in
+                image.draw(in: CGRect(origin: .zero, size: target))
+            }
+
+            guard let thumbImage = thumb.jpegData(compressionQuality: 0.8) else { return }
+            try thumbImage.write(to: thumbURL)
+
+            // Create page with links to document
+            let page = CDDocumentPage(context: context)
+            page.id = pageId
+            page.createdAt = Date()
+            page.index = 0
+            page.imagePath = imageURL.path
+            page.thumbPath = thumbURL.path
+            page.document = cdDoc
+
+            // Save document preview
+            cdDoc.previewPath = thumbURL.path
+
+            try context.save()
+            result = doc.id
+        }
+        return result
     }
 }

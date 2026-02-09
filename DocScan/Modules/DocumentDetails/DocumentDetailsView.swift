@@ -23,10 +23,23 @@ struct DocumentDetailsView: View {
                         .foregroundStyle(.secondary)
                     Text("Status: \(doc.status.rawValue)")
                         .font(.subheadline)
-                    Text("PDF: \(doc.pdfPath.isEmpty ? "Not available" : doc.pdfPath)")
+                    Text("PDF: \(doc.previewPath.isEmpty ? "Not available" : doc.previewPath)")
                         .font(.subheadline)
-                    Image(systemName: doc.status.iconName)
-                        .imageScale(.large)
+                    if let uiImage = UIImage(contentsOfFile: doc.previewPath) {
+                        let path = doc.previewPath
+                        let exists = FileManager.default.fileExists(atPath: path)
+                        Text("Exist? \(exists)")
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 200)
+                    } else {
+                        let path = doc.previewPath
+                        let exists = FileManager.default.fileExists(atPath: path)
+                        Text("Exist? \(exists)")
+                        Image(systemName: doc.status.iconName)
+                            .imageScale(.large)
+                    }
                     Spacer()
                     HStack(spacing: 20) {
                         Button("Rename") {}
