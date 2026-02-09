@@ -5,6 +5,7 @@ struct DocScanApp: App {
     let persistenceController = PersistenceController.shared
     let repository: DocumentsRepository
     @StateObject private var vm: DocumentsViewModel
+    @StateObject private var router = Router()
 
     init() {
         let repository = DocumentsRepository(persistence: persistenceController)
@@ -14,7 +15,15 @@ struct DocScanApp: App {
 
     var body: some Scene {
         WindowGroup {
-            DocumentsView(vm: vm)
+            NavigationStack(path: $router.path) {
+                DocumentsView(vm: vm) { router.push(.documentDetails(id: $0)) }
+                    .navigationDestination(for: Route.self) { route in
+                        switch route {
+                        case let .documentDetails(id: id):
+                            DocumentDetailsView(id: id, repository: repository)
+                        }
+                    }
+            }
         }
     }
 }

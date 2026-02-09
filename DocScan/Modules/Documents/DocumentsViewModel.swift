@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 final class DocumentsViewModel: ObservableObject {
     @Published private(set) var documents: [Document] = []
+    @Published var alert: AppAlert?
 
     private let repository: DocumentsRepository
 
@@ -22,9 +23,7 @@ final class DocumentsViewModel: ObservableObject {
             documents = try await repository.fetch(page: page, pageSize: pageSize)
             canLoadMore = documents.count == pageSize
         } catch {
-            // TODO: error state + retry
-            AppLogger.repository.debug("Failed to load documents: \(error)")
-            documents = []
+            alert = AppAlert(title: "Failed to load documents", message: error.localizedDescription)
         }
     }
 
@@ -39,7 +38,7 @@ final class DocumentsViewModel: ObservableObject {
             _ = try await repository.createMock()
             await load()
         } catch {
-            AppLogger.repository.error("\(error.localizedDescription)")
+            alert = AppAlert(title: "Failed to add Mock Document", message: error.localizedDescription)
         }
     }
 
@@ -49,28 +48,39 @@ final class DocumentsViewModel: ObservableObject {
 
     func deleteDocument(at offsets: IndexSet) async {
         let ids = offsets.map { self.documents[$0].id }
-        for id in ids {
-            try? await repository.delete(id: id)
+        do {
+            for id in ids {
+                try await repository.delete(id: id)
+            }
+            await load()
+        } catch {
+            alert = AppAlert(title: "Failed to delete", message: error.localizedDescription)
         }
-        await load()
     }
 
     func deleteAll() async {
-        try? await repository.deleteAll()
-        await load()
+        do {
+            try await repository.deleteAll()
+            await load()
+        } catch {
+            alert = AppAlert(title: "Failed to delete all", message: error.localizedDescription)
+        }
     }
 
     func loadMore(currentId: UUID) async {
-        guard canLoadMore else { return }
+        guard canLoadMore else {
+            return
+        }
         guard let lastId = documents.last?.id, lastId == currentId else { return }
+
         do {
-            AppLogger.repository.debug("New page loading...")
             page += 1
             let next = try await repository.fetch(page: page, pageSize: pageSize)
             documents.append(contentsOf: next)
             canLoadMore = next.count == pageSize
         } catch {
-            // TODO: Error handling
+            // TODO: No alert, just log + soft retry
+            alert = AppAlert(title: "Failed to load more documents", message: error.localizedDescription)
         }
     }
 }

@@ -2,6 +2,7 @@ import CoreData
 
 protocol IDocumentsRepository {
     func fetch(page: Int, pageSize: Int) async throws -> [Document]
+    func fetch(by id: UUID) async throws -> Document?
     func count() async throws -> Int
 
     // TODO: Remove createMock after real files handlers implementation
@@ -29,6 +30,16 @@ final class DocumentsRepository: IDocumentsRepository {
             req.fetchOffset = pageSize * page
             let items = try context.fetch(req)
             return items.compactMap { $0.toDomain() }
+        }
+    }
+
+    func fetch(by id: UUID) async throws -> Document? {
+        let context = persistence.container.viewContext
+        return try await context.perform {
+            let req = CDDocument.fetchRequest()
+            req.fetchLimit = 1
+            req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            return try context.fetch(req).first?.toDomain()
         }
     }
 
@@ -62,7 +73,7 @@ final class DocumentsRepository: IDocumentsRepository {
         let context = persistence.container.viewContext
         return try await context.perform {
             let req: NSFetchRequest<CDDocument> = CDDocument.fetchRequest()
-            req.predicate = NSPredicate(format: "id == %@", id.uuidString)
+            req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
             if let doc = try context.fetch(req).first {
                 context.delete(doc)
                 try context.save()

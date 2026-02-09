@@ -26,6 +26,7 @@ disabled_rules:
   - large_tuple                 # большие кортежи допускаем, лучше заменить на struct
   - cyclomatic_complexity       # сложность кода лучше анализировать SonarQube
   - file_length                 # не будем ограничивать размер файла пока проект растёт
+  - conditional_returns_on_newline       # return в guard/if всегда на новой строке
 # ----------------------------
 # Опциональные правила (включаем для прод-качества кода)
 # ----------------------------
@@ -44,7 +45,6 @@ opt_in_rules:
   - closure_end_indentation             # правильный отступ после закрытия замыкания
   - closure_spacing                     # пробелы внутри замыкания { x in ... }
   - collection_alignment                # выравнивание элементов массива/словаря
-  - conditional_returns_on_newline       # return в guard/if всегда на новой строке
   - contains_over_filter_is_empty        # использовать .contains вместо filter{...}.isEmpty
   - empty_count                         # использовать .isEmpty вместо .count == 0
   - explicit_init                       # явный вызов init() вместо сокращённого ()

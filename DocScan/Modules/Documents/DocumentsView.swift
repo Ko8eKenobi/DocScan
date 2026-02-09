@@ -2,48 +2,53 @@ import SwiftUI
 
 struct DocumentsView: View {
     @ObservedObject var vm: DocumentsViewModel
+    let onOpenDetails: (UUID) -> Void
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if vm.documents.isEmpty {
-                    VStack {
-                        Text("No documents found.")
-                            .font(.headline)
-                        Image(systemName: "document.badge.plus")
-                            .resizable()
-                            .frame(width: 100, height: 100)
-                    }
-
-                } else {
-                    List {
-                        ForEach(vm.documents) { doc in
+        Group {
+            if vm.documents.isEmpty {
+                VStack {
+                    Text("No documents found.")
+                        .font(.headline)
+                    Image(systemName: "document.badge.plus")
+                        .resizable()
+                        .frame(width: 100, height: 100)
+                }
+            } else {
+                List {
+                    ForEach(vm.documents) { doc in
+                        Button {
+                            onOpenDetails(doc.id)
+                        } label: {
                             DocumentRow(doc: doc)
-                                .task { await vm.loadMore(currentId: doc.id) }
+                                .contentShape(Rectangle())
                         }
-                        .onDelete { deleteDocument(at: $0) }
+                        .buttonStyle(.plain)
+                        .task { await vm.loadMore(currentId: doc.id) }
                     }
-                    .listStyle(.plain)
+                    .onDelete { deleteDocument(at: $0) }
                 }
+                .listStyle(.plain)
             }
-            .navigationTitle("Documents")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    EditButton()
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Delete All") { deleteAllDocuments() }
-                }
-                ToolbarItem {
-                    Button { addDocument() }
-                        label: {
-                            Image(systemName: "plus")
-                        }
-                }
-            }
-            .refreshable { refreshDocuments() }
-            .onAppear { loadDocuments() }
         }
+        .navigationTitle("Documents")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                EditButton()
+            }
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Delete All") { deleteAllDocuments() }
+            }
+            ToolbarItem {
+                Button { addDocument() }
+                    label: {
+                        Image(systemName: "plus")
+                    }
+            }
+        }
+        .refreshable { refreshDocuments() }
+        .onAppear { loadDocuments() }
+        .alert(item: $vm.alert) { $0.toAlert() }
     }
 
     private func addDocument() {
@@ -78,7 +83,7 @@ private struct DocumentRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
+            Image(systemName: doc.status.iconName)
                 .imageScale(.large)
             VStack(alignment: .leading) {
                 Text(doc.title)
@@ -95,16 +100,6 @@ private struct DocumentRow: View {
                 .foregroundStyle(.secondary)
         }
     }
-
-    // TODO: Check after statuses implementation
-    private var icon: String {
-        switch doc.status {
-        case .draft: "doc"
-        case .ready: "checkmark.circle.fill"
-        case .processing: "arrow.clockwise.circle.fill"
-        case .failed: "xmark.circle.fill"
-        }
-    }
 }
 
 #Preview {
@@ -114,14 +109,33 @@ private struct DocumentRow: View {
 private struct PreviewHost: View {
     let persistence = PersistenceController.preview
     @StateObject private var vm: DocumentsViewModel
-
+    @StateObject private var router = Router()
+    private let repo: DocumentsRepository
     init() {
         let repo = DocumentsRepository(persistence: persistence)
+        self.repo = repo
         _vm = StateObject(wrappedValue: DocumentsViewModel(repository: repo))
     }
 
     var body: some View {
-        DocumentsView(vm: vm)
-            .environment(\.managedObjectContext, persistence.container.viewContext)
+        NavigationStack(path: $router.path) {
+            DocumentsView(vm: vm) { id in router.push(.documentDetails(id: id)) }
+                .navigationDestination(for: Route.self) { route in
+                    switch route {
+                    case let .documentDetails(id):
+                        DocumentDetailsView(id: id, repository: repo)
+                    }
+                }
+        }
+        .environment(\.managedObjectContext, persistence.container.viewContext)
+        .task {
+            // гарантируем загрузку данных для preview-store
+            await vm.onAppear()
+
+            // открываем details первого документа (если есть)
+            if let first = vm.documents.first {
+                router.push(.documentDetails(id: first.id))
+            }
+        }
     }
 }

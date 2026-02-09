@@ -14,4 +14,14 @@ public enum DocumentStatus: String {
     case processing
     case ready
     case failed
+
+    // TODO: Check after statuses implementation
+    var iconName: String {
+        switch self {
+        case .draft: "doc"
+        case .processing: "arrow.clockwise.circle.fill"
+        case .ready: "checkmark.circle.fill"
+        case .failed: "xmark.circle.fill"
+        }
+    }
 }
