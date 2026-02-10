@@ -6,7 +6,7 @@ final class DocumentsViewModel: ObservableObject {
     @Published private(set) var documents: [Document] = []
     @Published var alert: AppAlert?
 
-    private let repository: DocumentsRepository
+    private let repository: IDocumentsRepository
 
     private var page = 0
     private let pageSize = 30
@@ -30,9 +30,9 @@ final class DocumentsViewModel: ObservableObject {
 
     // TODO: Improve default document title generation
     private func makeTitle() -> String {
-        let f = DateFormatter()
-        f.dateFormat = "Scan yyyy-MM-dd HH:mm:ss"
-        return f.string(from: .now)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "Scan yyyy-MM-dd HH:mm:ss"
+        return formatter.string(from: .now)
     }
 
     func onAppear() async {
@@ -52,6 +52,15 @@ final class DocumentsViewModel: ObservableObject {
                 try await repository.delete(id: id)
             }
             await load()
+        } catch {
+            alert = AppAlert(title: "Failed to delete", message: error.localizedDescription)
+        }
+    }
+
+    func deleteDocument(by id: UUID) async {
+        do {
+            try await repository.delete(id: id)
+            documents.removeAll { $0.id == id }
         } catch {
             alert = AppAlert(title: "Failed to delete", message: error.localizedDescription)
         }

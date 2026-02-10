@@ -2,10 +2,10 @@ import SwiftUI
 
 struct DocumentsView: View {
     @ObservedObject var vm: DocumentsViewModel
-    @State private var showCamera = false
-    @State private var capturedImage: UIImage?
-
     let onOpenDetails: (UUID) -> Void
+    let onOpenCamera: () -> Void
+
+    @State private var showDeleteAllConfirm = false
 
     var body: some View {
         VStack {
@@ -40,12 +40,13 @@ struct DocumentsView: View {
                 EditButton()
             }
             ToolbarItem(placement: .topBarLeading) {
-                Button("Delete All") { deleteAllDocuments() }
+                Button("Delete All") { showDeleteAllConfirm = true }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showCamera = true
-                } label: {
+                    onOpenCamera()
+                }
+                label: {
                     Image(systemName: "plus")
                 }
             }
@@ -53,13 +54,13 @@ struct DocumentsView: View {
         .refreshable { refreshDocuments() }
         .onAppear { loadDocuments() }
         .alert(item: $vm.alert) { $0.toAlert() }
-        .fullScreenCover(isPresented: $showCamera) {
-            CameraPicker(image: $capturedImage)
-                .ignoresSafeArea()
-        }
-        .onChange(of: capturedImage) { image in
-            guard let image else { return }
-            createDocument(image)
+        .alert("Delete all files?", isPresented: $showDeleteAllConfirm) {
+            Button("Remove all", role: .destructive) {
+                deleteAllDocuments()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete all documents. This action cannot be undone.")
         }
     }
 
@@ -77,15 +78,6 @@ struct DocumentsView: View {
 
     private func deleteAllDocuments() {
         Task { await vm.deleteAll() }
-    }
-
-    private func createDocument(_ image: UIImage) {
-        Task {
-            if let id = await vm.createDocument(from: image) {
-                onOpenDetails(id)
-            }
-            capturedImage = nil
-        }
     }
 }
 
@@ -121,22 +113,34 @@ private struct PreviewHost: View {
     let persistence = PersistenceController.preview
     @StateObject private var vm: DocumentsViewModel
     @StateObject private var router = Router()
-    private let repo: DocumentsRepository
+    private let repository: DocumentsRepository
     init() {
-        let repo = DocumentsRepository(persistence: persistence)
-        self.repo = repo
-        _vm = StateObject(wrappedValue: DocumentsViewModel(repository: repo))
+        let repository = DocumentsRepository(persistence: persistence)
+        self.repository = repository
+        _vm = StateObject(wrappedValue: DocumentsViewModel(repository: repository))
     }
 
     var body: some View {
         NavigationStack(path: $router.path) {
-            DocumentsView(vm: vm) { id in router.push(.documentDetails(id: id)) }
-                .navigationDestination(for: Route.self) { route in
-                    switch route {
-                    case let .documentDetails(id):
-                        DocumentDetailsView(id: id, repository: repo)
+            DocumentsView(
+                vm: vm,
+                onOpenDetails: { router.push(.documentDetails(id: $0)) },
+                onOpenCamera: { router.present(.camera) }
+            )
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case let .documentDetails(id):
+                    DocumentDetailsView(
+                        id: id,
+                        repository: repository
+                    ) {
+                        Task {
+                            await vm.deleteDocument(by: id)
+                            router.pop()
+                        }
                     }
                 }
+            }
         }
         .environment(\.managedObjectContext, persistence.container.viewContext)
         .task {

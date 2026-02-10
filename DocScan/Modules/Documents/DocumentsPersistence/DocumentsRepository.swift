@@ -7,7 +7,9 @@ protocol IDocumentsRepository {
 
     func count() async throws -> Int
 
-    // func create(title: String) async throws -> Document
+    func createWithFirstPage(title: String, image: UIImage) async throws -> UUID?
+
+    func saveChanges(doc: Document) async throws
 
     func delete(id: UUID) async throws
     func deleteAll() async throws
@@ -21,8 +23,7 @@ final class DocumentsRepository: IDocumentsRepository {
     }
 
     func fetch(page: Int, pageSize: Int) async throws -> [Document] {
-        // TODO: Consider to use background context
-        let context = persistence.container.viewContext
+        let context = persistence.container.newBackgroundContext()
         return try await context.perform {
             let req = CDDocument.fetchRequest()
             req.sortDescriptors = [
@@ -53,26 +54,19 @@ final class DocumentsRepository: IDocumentsRepository {
         }
     }
 
-//    private func create(title: String) async throws -> Document {
-//        let context = persistence.container.viewContext
-//        return try await context.perform {
-//            let doc = Document(
-//                id: UUID(),
-//                title: title,
-//                createdAt: .now,
-//                status: .draft,
-//                pdfPath: "",
-//                previewPath: ""
-//            )
-//            let cd = CDDocument(context: context)
-//            cd.create(from: doc)
-//            try context.save()
-//            return doc
-//        }
-//    }
-
     func delete(id: UUID) async throws {
-        let context = persistence.container.viewContext
+        guard let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(domain: "FileStorage", code: 1, userInfo: [NSLocalizedDescriptionKey: "No documents directory"])
+        }
+        let dir = base
+            .appendingPathComponent("documents", isDirectory: true)
+            .appendingPathComponent(id.uuidString, isDirectory: true)
+
+        if FileManager.default.fileExists(atPath: dir.path) {
+            try FileManager.default.removeItem(at: dir)
+        }
+
+        let context = persistence.container.newBackgroundContext()
         return try await context.perform {
             let req: NSFetchRequest<CDDocument> = CDDocument.fetchRequest()
             req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -84,27 +78,36 @@ final class DocumentsRepository: IDocumentsRepository {
     }
 
     func deleteAll() async throws {
-        let context = persistence.container.viewContext
-        try await context.perform {
+        guard let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(domain: "FileStorage", code: 1, userInfo: [NSLocalizedDescriptionKey: "No documents directory"])
+        }
+        let dir = base.appendingPathComponent("documents", isDirectory: true)
+
+        if FileManager.default.fileExists(atPath: dir.path) {
+            try FileManager.default.removeItem(at: dir)
+        }
+
+        let context = persistence.container.newBackgroundContext()
+        let ids: [NSManagedObjectID] = try await context.perform {
             let req = NSFetchRequest<NSFetchRequestResult>(entityName: "CDDocument")
             let batch = NSBatchDeleteRequest(fetchRequest: req)
 
             batch.resultType = .resultTypeObjectIDs
 
             let res = try context.execute(batch) as? NSBatchDeleteResult
-            let ids = res?.result as? [NSManagedObjectID] ?? []
-
-            NSManagedObjectContext.mergeChanges(fromRemoteContextSave: [NSDeletedObjectsKey: ids], into: [context])
+            return res?.result as? [NSManagedObjectID] ?? []
         }
+        let viewContext = persistence.container.viewContext
+        NSManagedObjectContext.mergeChanges(fromRemoteContextSave: [NSDeletedObjectsKey: ids], into: [viewContext])
     }
 
     // TODO: Refactor with StorageHandler
     func createWithFirstPage(title: String, image: UIImage) async throws -> UUID? {
-        let context = persistence.container.viewContext
+        let context = persistence.container.newBackgroundContext()
         var result: UUID?
 
         try await context.perform {
-            let doc = Document(
+            var doc = Document(
                 id: UUID(),
                 title: title,
                 createdAt: .now,
@@ -117,16 +120,21 @@ final class DocumentsRepository: IDocumentsRepository {
             let cdDoc = CDDocument(context: context)
             cdDoc.create(from: doc)
 
-            // TODO: Switch to relative paths in CoreData (avoid storing sandbox absolute paths)
             guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-            let url = dir.appendingPathComponent("documents", isDirectory: true)
+            let url = dir
+                .appendingPathComponent("documents", isDirectory: true)
                 .appendingPathComponent(doc.id.uuidString, isDirectory: true)
+
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
 
             // Save images
             let pageId = UUID()
-            let imageURL = url.appendingPathComponent("\(pageId.uuidString).jpg")
-            let thumbURL = url.appendingPathComponent("\(pageId.uuidString)-thumb.jpg")
+            let relImagePath = "documents/\(doc.id.uuidString)/\(pageId.uuidString).jpg"
+            let relThumbPath = "documents/\(doc.id.uuidString)/\(pageId.uuidString)-thumb.jpg"
+
+            guard let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+            let imageURL = base.appendingPathComponent(relImagePath)
+            let thumbURL = base.appendingPathComponent(relThumbPath)
 
             let imageData = image.jpegData(compressionQuality: 1)
             try imageData?.write(to: imageURL)
@@ -135,8 +143,8 @@ final class DocumentsRepository: IDocumentsRepository {
             let scale = 240.0 / max(size.width, size.height)
             let target = CGSize(width: size.width * scale, height: size.height * scale)
 
-            let render = UIGraphicsImageRenderer(size: target)
-            let thumb = render.image { _ in
+            let renderer = UIGraphicsImageRenderer(size: target)
+            let thumb = renderer.image { _ in
                 image.draw(in: CGRect(origin: .zero, size: target))
             }
 
@@ -148,16 +156,30 @@ final class DocumentsRepository: IDocumentsRepository {
             page.id = pageId
             page.createdAt = Date()
             page.index = 0
-            page.imagePath = imageURL.path
-            page.thumbPath = thumbURL.path
+            page.imagePath = relImagePath
+            page.thumbPath = relThumbPath
             page.document = cdDoc
 
             // Save document preview
-            cdDoc.previewPath = thumbURL.path
-
+            cdDoc.previewPath = relThumbPath
+            cdDoc.status = .ready
+            doc.status = .ready
             try context.save()
             result = doc.id
         }
         return result
+    }
+
+    func saveChanges(doc: Document) async throws {
+        let context = persistence.container.newBackgroundContext()
+        try await context.perform {
+            let req: NSFetchRequest<CDDocument> = CDDocument.fetchRequest()
+            req.fetchLimit = 1
+            req.predicate = NSPredicate(format: "id == %@", doc.id as CVarArg)
+
+            guard let changeDoc = try context.fetch(req).first else { return }
+            changeDoc.title = doc.title
+            try context.save()
+        }
     }
 }
