@@ -43,7 +43,6 @@ struct CameraPicker: UIViewControllerRepresentable {
             ]
         ) {
             parent.image = info[.originalImage] as? UIImage
-            parent.dismiss()
         }
     }
 }

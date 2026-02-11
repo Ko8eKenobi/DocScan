@@ -7,6 +7,7 @@ struct DocScanApp: App {
 
     let persistenceController = PersistenceController.shared
     let repository: IDocumentsRepository
+
     @StateObject private var vm: DocumentsViewModel
     @StateObject private var router = Router()
 
@@ -45,7 +46,7 @@ struct DocScanApp: App {
             .fullScreenCover(item: $router.modal) { modal in
                 switch modal {
                 case .camera:
-                    CameraView { image in
+                    CameraView(detector: QuadDetector()) { image in
                         Task {
                             guard let id = await vm.createDocument(from: image) else { return }
                             router.dismissModal()
