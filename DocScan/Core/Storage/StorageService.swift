@@ -1,19 +1,55 @@
 import Foundation
 import UIKit
 
+enum StorageError: LocalizedError {
+    case documentsDirectoryUnavailable
+    case directoryCreationFailed(url: URL, underlying: Error)
+    case failedToEncodeJPEG
+    case failedToWriteData(url: URL, underlying: Error)
+    case imageDecodeFailed(url: URL)
+    case pdfNoImages
+    case pdfGenerationFailed(url: URL, underlying: Error)
+    case invalidRelativePath(String)
+    case fileNotFound(url: URL)
+
+    var errorDescription: String? {
+        switch self {
+        case .documentsDirectoryUnavailable:
+            "Documents directory is unavailable."
+        case let .directoryCreationFailed(url, _):
+            "Failed to create directory: \(url.lastPathComponent)"
+        case .failedToEncodeJPEG:
+            "Failed to encode JPEG."
+        case let .failedToWriteData(url, _):
+            "Failed to write file: \(url.lastPathComponent)"
+        case let .imageDecodeFailed(url):
+            "Failed to decode image: \(url.lastPathComponent)"
+        case .pdfNoImages:
+            "No images to generate PDF."
+        case let .pdfGenerationFailed(url, _):
+            "Failed to generate PDF: \(url.lastPathComponent)"
+        case let .invalidRelativePath(path):
+            "Invalid relative path: \(path)"
+        case let .fileNotFound(url):
+            "File not found: \(url.lastPathComponent)"
+        }
+    }
+}
+
 protocol IStorageService {
     func docsDirectoryURL() throws -> URL
     func docURL(id: UUID) throws -> URL
     func fileURL(from relPath: String) throws -> URL
+
     func fileExists(url: URL) -> Bool
 
     func removeDoc(by url: URL) throws
 
     func saveImage(image: UIImage, docId: UUID, fileName: String, isThumb: Bool) throws
-    func loadImage(relPath: String) throws -> UIImage?
+    func loadImage(relPath: String) throws -> UIImage
 
     func savePDF(images: [UIImage], relPath: String) throws
-    func getPDFURL(by id: UUID) async throws -> URL
+    func getPDFURL(by id: UUID) throws -> URL
 }
 
 final class StorageService: IStorageService {
@@ -54,37 +90,56 @@ final class StorageService: IStorageService {
         } else {
             data = image.jpegData(compressionQuality: 1)
         }
-        try data?.write(to: imageURL)
+
+        guard let data else {
+            throw StorageError.failedToEncodeJPEG
+        }
+        do {
+            try data.write(to: imageURL, options: [.atomic])
+        } catch {
+            throw StorageError.failedToWriteData(url: imageURL, underlying: error)
+        }
     }
 
-    func loadImage(relPath: String) throws -> UIImage? {
+    func loadImage(relPath: String) throws -> UIImage {
         let imgURL = try fileURL(from: relPath)
-        return UIImage(contentsOfFile: imgURL.path)
+        guard fileExists(url: imgURL) else {
+            throw StorageError.fileNotFound(url: imgURL)
+        }
+
+        let image = UIImage(contentsOfFile: imgURL.path)
+        guard let image else {
+            throw StorageError.imageDecodeFailed(url: imgURL)
+        }
+
+        return image
     }
 
     func savePDF(images: [UIImage], relPath: String) throws {
         guard let first = images.first else {
-            throw NSError(domain: "PDFExport", code: 10, userInfo: [NSLocalizedDescriptionKey: "No images"])
+            throw StorageError.pdfNoImages
         }
 
         let pdfUrl = try fileURL(from: relPath)
-
         try createDir(url: pdfUrl.deletingLastPathComponent())
 
         let pageRect = CGRect(origin: .zero, size: first.size)
-
         let render = UIGraphicsPDFRenderer(bounds: pageRect)
 
-        try render.writePDF(to: pdfUrl) { context in
-            for img in images {
-                let rect = CGRect(origin: .zero, size: img.size)
-                context.beginPage(withBounds: rect, pageInfo: [:])
-                img.draw(in: rect)
+        do {
+            try render.writePDF(to: pdfUrl) { context in
+                for img in images {
+                    let rect = CGRect(origin: .zero, size: img.size)
+                    context.beginPage(withBounds: rect, pageInfo: [:])
+                    img.draw(in: rect)
+                }
             }
+        } catch {
+            throw StorageError.pdfGenerationFailed(url: pdfUrl, underlying: error)
         }
     }
 
-    func getPDFURL(by id: UUID) async throws -> URL {
+    func getPDFURL(by id: UUID) throws -> URL {
         let pdfPath = "documents/\(id.uuidString)/\(id.uuidString).pdf"
         return try fileURL(from: pdfPath)
     }
@@ -95,9 +150,17 @@ final class StorageService: IStorageService {
         return exists && !isDir.boolValue
     }
 
+    func fileURL(from relPath: String) throws -> URL {
+        let trimmed = relPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("/") else {
+            throw StorageError.invalidRelativePath(relPath)
+        }
+        return try baseURL().appendingPathComponent(trimmed)
+    }
+
     private func baseURL() throws -> URL {
         guard let base = fileMngr.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            throw NSError(domain: "Change to custom errors", code: 0, userInfo: nil)
+            throw StorageError.documentsDirectoryUnavailable
         }
         return base
     }
@@ -106,11 +169,11 @@ final class StorageService: IStorageService {
         try docURL(id: id).appendingPathComponent(fileName)
     }
 
-    func fileURL(from relPath: String) throws -> URL {
-        try baseURL().appendingPathComponent(relPath)
-    }
-
     private func createDir(url: URL) throws {
-        try fileMngr.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+        do {
+            try fileMngr.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            throw StorageError.directoryCreationFailed(url: url, underlying: error)
+        }
     }
 }
