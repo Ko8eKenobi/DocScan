@@ -37,4 +37,36 @@ final class DocumentDetailsViewModel: ObservableObject {
             alert = AppAlert(title: "Rename failed", message: error.localizedDescription)
         }
     }
+
+    func exportPDF() async {
+        guard let doc = document else { return }
+        do {
+            let pdfPath = try await repository.exportPDF(doc.id)
+            guard !pdfPath.isEmpty else {
+                alert = AppAlert(title: "Export failed", message: "PDF was not generated")
+                return
+            }
+            var updated = doc
+            updated.pdfPath = pdfPath
+            updated.status = .ready
+            document = updated
+        } catch {
+            alert = AppAlert(title: "Export failed", message: error.localizedDescription)
+        }
+    }
+
+    func getPDFURL() async -> URL? {
+        guard let doc = document else { return nil }
+
+        do {
+            let url = try await repository.getPDFURL(by: doc.id, pdfPath: doc.pdfPath)
+            if doc.pdfPath.isEmpty {
+                document = try await repository.fetch(by: doc.id)
+            }
+            return url
+        } catch {
+            alert = AppAlert(title: "Export failed", message: error.localizedDescription)
+            return nil
+        }
+    }
 }

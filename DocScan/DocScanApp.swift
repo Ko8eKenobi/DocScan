@@ -7,12 +7,13 @@ struct DocScanApp: App {
 
     let persistenceController = PersistenceController.shared
     let repository: IDocumentsRepository
+    let storageService = StorageService()
 
     @StateObject private var vm: DocumentsViewModel
     @StateObject private var router = Router()
 
     init() {
-        let repository = DocumentsRepository(persistence: persistenceController)
+        let repository = DocumentsRepository(persistence: persistenceController, storageService: storageService)
         self.repository = repository
         _vm = StateObject(wrappedValue: DocumentsViewModel(repository: repository))
     }

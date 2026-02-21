@@ -5,7 +5,7 @@ public struct Document: Identifiable {
     public var title: String
     public let createdAt: Date
     public var status: DocumentStatus
-    public let pdfPath: String
+    public var pdfPath: String
     public let previewPath: String
 }
 

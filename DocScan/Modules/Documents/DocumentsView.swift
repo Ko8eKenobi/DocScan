@@ -115,7 +115,11 @@ private struct PreviewHost: View {
     @StateObject private var router = Router()
     private let repository: DocumentsRepository
     init() {
-        let repository = DocumentsRepository(persistence: persistence)
+        let storageService = StorageService()
+        let repository = DocumentsRepository(
+            persistence: persistence,
+            storageService: storageService
+        )
         self.repository = repository
         _vm = StateObject(wrappedValue: DocumentsViewModel(repository: repository))
     }
